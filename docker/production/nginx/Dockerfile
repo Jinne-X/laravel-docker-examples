@@ -18,14 +18,12 @@ COPY . /var/www
 RUN npm install && npm run build
 
 # Stage 2: Nginx production image
-FROM nginx:alpine
 
-# Copy custom Nginx configuration
-# -----------------------------------------------------------
-# Replace the default Nginx configuration with our custom one
-# that is optimized for serving a Laravel application.
-# -----------------------------------------------------------
-COPY ./docker/production/nginx/nginx.conf /etc/nginx/nginx.conf
+FROM nginxinc/nginx-unprivileged:stable-alpine
+
+
+# Copy custom Nginx server configuration to conf.d
+COPY ./docker/production/nginx/default.conf /etc/nginx/conf.d/default.conf
 
 # Copy Laravel's public assets from the builder stage
 # -----------------------------------------------------------
@@ -33,9 +31,14 @@ COPY ./docker/production/nginx/nginx.conf /etc/nginx/nginx.conf
 # -----------------------------------------------------------
 COPY --from=builder /var/www/public /var/www/public
 
+
 # Set the working directory to the public folder
 WORKDIR /var/www/public
 
-# Expose port 80 and start Nginx
-EXPOSE 80
+# Ensure log directory exists and is writable by UID 101
+RUN mkdir -p /var/log/nginx && chown 101:101 /var/log/nginx
+
+
+# Expose port 8080 and start Nginx
+EXPOSE 8080
 CMD ["nginx", "-g", "daemon off;"]
